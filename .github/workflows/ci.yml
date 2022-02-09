@@ -14,7 +14,7 @@ jobs:
       with:
         submodules: false
     - name: Install dependencies
-      run: sudo apt install libcurl-dev libsecret-1-dev
+      run: sudo apt install libcurl4-openssl-dev libsecret-1-dev
     - name: "[Release g++] Build & Test"
       uses: ashutoshvarma/action-cmake-build@master
       with:
@@ -35,7 +35,7 @@ jobs:
       with:
         submodules: false
     - name: Install dependencies
-      run: sudo apt install libcurl-dev libsecret-1-dev
+      run: sudo apt install libcurl4-openssl-dev libsecret-1-dev
     - name: Install clang-tidy
       run: sudo apt install clang-tidy
     - name: "[Release g++] Build & Test"
