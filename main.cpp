@@ -4,6 +4,7 @@
 #include "cpr/multipart.h"
 #include "cpr/payload.h"
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <nlohmann/json.hpp>
