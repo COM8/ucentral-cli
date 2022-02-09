@@ -38,7 +38,7 @@ std::string get_user_secret(const std::string& sid) {
     return "";
 }
 
-std::string login(const std::string& user, const std::string& password) {
+std::string perform_login(const std::string& user, const std::string& password) {
     cpr::Multipart form{{"user", user}, {"pwd", password}, {"login", "Login"}, {"request", ""}};
     cpr::Response r = cpr::Post(cpr::Url{"https://ucentral.in.tum.de/cgi-bin/login.cgi"}, std::move(form));
     if (r.status_code == 200) {
@@ -174,10 +174,12 @@ std::string read_password() {
     return password;
 }
 
+// NOLINTNEXTLINE (bugprone-exception-escape)
 int main(int argC, char** argV) {
     std::string userName;
     std::string password;
     if (argC == 2) {
+        // NOLINTNEXTLINE (cppcoreguidelines-pro-bounds-pointer-arithmetic)
         userName = argV[1];
         if (!load_password(userName, &password)) {
             password = read_password();
@@ -188,14 +190,17 @@ int main(int argC, char** argV) {
             std::cout << "Password loaded from system keyring.\n";
         }
     } else if (argC == 3) {
+        // NOLINTNEXTLINE (cppcoreguidelines-pro-bounds-pointer-arithmetic)
         userName = argV[1];
+        // NOLINTNEXTLINE (cppcoreguidelines-pro-bounds-pointer-arithmetic)
         password = argV[2];
     } else {
+        // NOLINTNEXTLINE (cppcoreguidelines-pro-bounds-pointer-arithmetic)
         std::cerr << argV[0] << " <userName> [<password>]\n";
         return EXIT_FAILURE;
     }
 
-    const std::string sid = login(userName, password);
+    const std::string sid = perform_login(userName, password);
     if (sid.empty()) {
         std::cerr << "Login failed!\n";
         return EXIT_FAILURE;
