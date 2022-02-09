@@ -8,18 +8,20 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <regex>
 #include <string>
 #include <cpr/cpr.h>
-#include <regex>
+#include <keychain/keychain.h>
+#include <termios.h>
 
 std::string extract_user_secret(const std::string& data) {
-  std::regex secretRegex("printman\\.(\\d|[a-f]|[A-F]){10,}");
-  std::regex_iterator matches = std::sregex_iterator(data.begin(), data.end(), secretRegex);
-  if(matches == std::sregex_iterator()) {
-    std::cerr << "No user secret found!\n";
-    return "";
-  }
-  return matches->str();
+    std::regex secretRegex("printman\\.(\\d|[a-f]|[A-F]){10,}");
+    std::regex_iterator matches = std::sregex_iterator(data.begin(), data.end(), secretRegex);
+    if (matches == std::sregex_iterator()) {
+        std::cerr << "No user secret found!\n";
+        return "";
+    }
+    return matches->str();
 }
 
 std::string get_user_secret(const std::string& sid) {
@@ -37,7 +39,7 @@ std::string get_user_secret(const std::string& sid) {
 }
 
 std::string login(const std::string& user, const std::string& password) {
-  cpr::Multipart form{{"user", user}, {"pwd", password}, {"login", "Login"}, {"request", ""}};
+    cpr::Multipart form{{"user", user}, {"pwd", password}, {"login", "Login"}, {"request", ""}};
     cpr::Response r = cpr::Post(cpr::Url{"https://ucentral.in.tum.de/cgi-bin/login.cgi"}, std::move(form));
     if (r.status_code == 200) {
         try {
@@ -131,26 +133,86 @@ void print_info(const nlohmann::json& info) {
     std::cout << "Bindable: " << bindable << '\n';
 }
 
+bool load_password(const std::string& user, std::string* password) {
+    keychain::Error error{};
+    *password = keychain::getPassword("ucentral-cli", "ucentral", user, error);
+    if (error && error.type != keychain::ErrorType::NotFound) {
+        std::cerr << "Failed to load password for '" << user << "' with: " << error.message << '\n';
+        return false;
+    }
+    return true;
+}
+
+bool store_password(const std::string& user, const std::string& password) {
+    keychain::Error error{};
+    keychain::setPassword("ucentral-cli", "ucentral", user, password, error);
+    if (error) {
+        std::cerr << "Failed to store password with: " << error.message << '\n';
+        return false;
+    }
+    return true;
+}
+
+void set_stdin_echo(bool enable) {
+    termios tty{};
+    tcgetattr(STDIN_FILENO, &tty);
+    if (!enable) {
+        tty.c_lflag &= ~ECHO;
+    } else {
+        tty.c_lflag |= ECHO;
+    }
+    (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+}
+
+std::string read_password() {
+    std::cout << "Password: ";
+    std::string password;
+    set_stdin_echo(false);
+    std::cin >> password;
+    set_stdin_echo(true);
+    std::cout << '\n';
+    return password;
+}
+
 int main(int argC, char** argV) {
-  if(argC != 3) {
-    std::cerr << argV[0] << " <userName> <password>\n";
-    return EXIT_FAILURE;
-  }
-  const std::string userName = argV[1];
-  const std::string password = argV[2];
+    std::string userName;
+    std::string password;
+    if (argC == 2) {
+        userName = argV[1];
+        if (!load_password(userName, &password)) {
+            password = read_password();
+            if (password.empty()) {
+                std::cerr << "An empty password is not allowed!\n";
+                return EXIT_FAILURE;
+            }
+            std::cout << "Password loaded from system keyring.\n";
+        }
+    } else if (argC == 3) {
+        userName = argV[1];
+        password = argV[2];
+    } else {
+        std::cerr << argV[0] << " <userName> [<password>]\n";
+        return EXIT_FAILURE;
+    }
 
     const std::string sid = login(userName, password);
-    if(sid.empty()) {
-      std::cerr << "Login failed!\n";
-      return EXIT_FAILURE;
+    if (sid.empty()) {
+        std::cerr << "Login failed!\n";
+        return EXIT_FAILURE;
     }
     std::cout << "New session ID: " << sid << '\n';
 
     const std::string userSecret = get_user_secret(sid);
-    if(userSecret.empty()) {
-      return EXIT_FAILURE;
+    if (userSecret.empty()) {
+        return EXIT_FAILURE;
     }
     std::cout << "New user secret: " << userSecret << '\n';
+
+    if (!store_password(userName, password)) {
+        std::cerr << "Failed to store password in your system keyring!\n";
+        return EXIT_FAILURE;
+    }
+    std::cout << "Password stored to system keyring.\n";
 
     std::optional<nlohmann::json> info = get_info();
     if (!info) {
@@ -169,9 +231,9 @@ int main(int argC, char** argV) {
         std::string user;
         info->at("user").get_to(user);
         int remaining = -1;
-    if (info->contains("remaining")) {
-        info->at("remaining").get_to(remaining);
-    }
+        if (info->contains("remaining")) {
+            info->at("remaining").get_to(remaining);
+        }
         std::cerr << "Already bound to '" << user << "' for the next " << remaining << "s.\n";
         return EXIT_FAILURE;
     }
