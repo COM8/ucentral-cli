@@ -6,8 +6,8 @@ on:
     branches: [ main ]
 
 jobs:
-  ubuntu-20:
-    runs-on: ubuntu-20.04
+  ubuntu-latest:
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v2.4.0
