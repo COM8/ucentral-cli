@@ -4,7 +4,6 @@
 #include "cpr/multipart.h"
 #include "cpr/payload.h"
 #include <cstddef>
-#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -14,6 +13,7 @@
 #include <cpr/cpr.h>
 #include <keychain/keychain.h>
 #include <termios.h>
+#include <unistd.h>
 
 std::string extract_user_secret(const std::string& data) {
     std::regex secretRegex("printman\\.(\\d|[a-f]|[A-F]){10,}");
