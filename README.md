@@ -2,9 +2,16 @@
 C++ client for https://ucentral.in.tum.de to unlock your device for printing.
 Once logged in, your password will be stored in the system keyring.
 
-## Requirements (Fedora)
+## Requirements
+
+### Fedora
 ```
-sudo dnf install libsecret-devel gcc cmake git
+sudo dnf install libcurl-devel libsecret-devel gcc cmake git
+```
+
+### Debian/Ubuntu
+```
+sudo apt install libcurl4-openssl-dev libsecret-1-dev gcc cmake git
 ```
 
 ## Building
